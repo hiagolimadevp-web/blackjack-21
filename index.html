@@ -458,6 +458,58 @@
     margin-top: 16px;
     font-size: 13px;
   }
+
+  /* Histórico de rodadas */
+  .history-round {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(212,175,55,0.25);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+  }
+  .history-round-header {
+    font-size: 13px;
+    font-weight: bold;
+    color: var(--gold);
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .history-round-header .hr-result { color: #fff; font-weight: normal; }
+  .history-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  .hist-card {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 6px;
+    padding: 4px 7px;
+    font-size: 12px;
+  }
+  .hist-card.hc-red { color: #ff8080; }
+  .hist-card .hlbadge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    font-size: 9px;
+    font-weight: bold;
+    color: #fff;
+  }
+  .history-empty {
+    text-align: center;
+    opacity: 0.7;
+    font-size: 13px;
+    padding: 20px;
+  }
 </style>
 </head>
 <body>
@@ -503,6 +555,7 @@
     <span>🃏 Cartas restantes: <b id="deckCount">--</b></span>
     <label class="toggle-wrap"><input type="checkbox" id="tipsToggle" checked> 💡 Dicas</label>
     <button id="openGuideBtn" style="padding:6px 12px;font-size:13px; min-height:auto;">📖 Guia</button>
+    <button id="openHistoryBtn" style="padding:6px 12px;font-size:13px; min-height:auto;">📜 Histórico</button>
     <button id="reconfigureBtn" style="padding:6px 12px;font-size:13px; min-height:auto;">⚙️ Mesa</button>
   </div>
 
@@ -615,6 +668,16 @@
         <button id="flashCloseBtn2" style="display:none;">Fechar</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ========== HISTÓRICO DE RODADAS ========== -->
+<div id="historyOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.92); z-index:1100; align-items:flex-start; justify-content:center; padding:12px; overflow-y:auto;">
+  <div class="guide-box" style="max-width:760px;">
+    <h2>📜 Histórico de Rodadas</h2>
+    <p style="text-align:center; font-size:13px; opacity:0.85; margin-top:-6px;">Reveja a ordem exata das cartas de rodadas anteriores pra conferir sua contagem.</p>
+    <div id="historyList"></div>
+    <div class="guide-close-row"><button id="historyCloseBtn">Fechar</button></div>
   </div>
 </div>
 
@@ -805,6 +868,8 @@
         const data = JSON.parse(saved);
         if (data.bankroll && data.bankroll > 0) bankroll = data.bankroll;
         if (Array.isArray(data.countGuessHistory)) countGuessHistory = data.countGuessHistory;
+        if (Array.isArray(data.roundHistory)) roundHistory = data.roundHistory;
+        if (typeof data.roundNumber === 'number') roundNumber = data.roundNumber;
       }
     } catch (e) {}
   }
@@ -813,7 +878,9 @@
     try {
       localStorage.setItem('bj21_state', JSON.stringify({
         bankroll,
-        countGuessHistory
+        countGuessHistory,
+        roundHistory,
+        roundNumber
       }));
     } catch (e) {}
   }
@@ -881,8 +948,14 @@
     return -1;
   }
 
+  let roundHistory = [];
+  let roundCardLog = [];
+  let roundNumber = 0;
+  const MAX_HISTORY = 15;
+
   function countCard(card) {
     runningCount += hiLoValue(card);
+    roundCardLog.push({ rank: card.rank, suit: card.suit, color: card.color, hiLo: hiLoValue(card), rcAfter: runningCount });
     updateCountDisplay();
   }
 
@@ -1153,6 +1226,8 @@
     insuranceOffered = false;
     playerTookInsurance = false;
     insuranceBet = 0;
+    roundCardLog = [];
+    roundNumber++;
 
     seats.forEach(seat => {
       seat.hands = [{ cards: [], bet: seat.isBot ? BOT_BET : betVal, done: false, isDoubled: false, result: null, isBlackjack: false }];
@@ -1558,6 +1633,18 @@
     el('newRoundControls').style.display = 'flex';
     el('tipBox').style.display = 'none';
 
+    // Salva a rodada no histórico (pra revisão de contagem depois)
+    const userHand = seats[USER_SEAT_INDEX].hands[0];
+    roundHistory.push({
+      roundNumber,
+      cards: roundCardLog.slice(),
+      rcEnd: runningCount,
+      tcEnd: (runningCount / decksRemaining()).toFixed(1),
+      dealerScore: handScore(dealer.cards),
+      userResult: seats[USER_SEAT_INDEX].hands.map(h => h.result).filter(Boolean).join(', ') || '—'
+    });
+    if (roundHistory.length > MAX_HISTORY) roundHistory = roundHistory.slice(-MAX_HISTORY);
+
     if (bankroll <= 0) {
       setMessage('Você ficou sem fichas! Recarregando saldo... 💸');
       bankroll = 1000;
@@ -1714,6 +1801,46 @@
   el('closeGuideBtn').addEventListener('click', closeGuide);
   el('guideOverlay').addEventListener('click', (e) => {
     if (e.target === el('guideOverlay')) closeGuide();
+  });
+
+  // ---------- Histórico de Rodadas ----------
+  function renderHistory() {
+    const list = el('historyList');
+    if (roundHistory.length === 0) {
+      list.innerHTML = '<div class="history-empty">Nenhuma rodada jogada ainda nesta sessão.</div>';
+      return;
+    }
+    // mais recente primeiro
+    const html = roundHistory.slice().reverse().map(r => {
+      const cardsHtml = r.cards.map(c => {
+        const badgeColor = c.hiLo > 0 ? '#1a7f37' : (c.hiLo < 0 ? '#c0272d' : '#777');
+        const badgeText = c.hiLo > 0 ? '+1' : (c.hiLo < 0 ? '-1' : '0');
+        const redClass = c.color === 'red' ? ' hc-red' : '';
+        return `<span class="hist-card${redClass}">${c.rank}${c.suit} <span class="hlbadge" style="background:${badgeColor}">${badgeText}</span></span>`;
+      }).join('');
+      return `
+        <div class="history-round">
+          <div class="history-round-header">
+            <span>Rodada #${r.roundNumber} · Dealer: ${r.dealerScore} · <span class="hr-result">${r.userResult}</span></span>
+            <span>RC final: ${r.rcEnd > 0 ? '+' : ''}${r.rcEnd} · TC: ${r.tcEnd > 0 ? '+' : ''}${r.tcEnd}</span>
+          </div>
+          <div class="history-cards">${cardsHtml}</div>
+        </div>`;
+    }).join('');
+    list.innerHTML = html;
+  }
+
+  function openHistory() {
+    renderHistory();
+    el('historyOverlay').style.display = 'flex';
+  }
+  function closeHistory() {
+    el('historyOverlay').style.display = 'none';
+  }
+  el('openHistoryBtn').addEventListener('click', openHistory);
+  el('historyCloseBtn').addEventListener('click', closeHistory);
+  el('historyOverlay').addEventListener('click', (e) => {
+    if (e.target === el('historyOverlay')) closeHistory();
   });
 
   document.querySelectorAll('.guide-tab').forEach(tab => {
