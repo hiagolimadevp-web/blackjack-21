@@ -36,10 +36,38 @@
     width: 100%;
     max-width: 1000px;
     background: rgba(0,0,0,0.15);
-    border: 6px solid #3a2412;
-    border-radius: 24px;
-    padding: 16px;
-    box-shadow: inset 0 0 60px rgba(0,0,0,0.4), 0 10px 30px rgba(0,0,0,0.5);
+    border: 10px solid #3a2412;
+    border-radius: 20px 20px 50% 50% / 20px 20px 34% 34%;
+    padding: 36px 70px 56px;
+    box-shadow:
+      inset 0 0 70px rgba(0,0,0,0.45),
+      inset 0 0 0 4px rgba(212,175,55,0.35),
+      0 10px 30px rgba(0,0,0,0.5);
+    position: relative;
+  }
+  .table::before {
+    content: '';
+    position: absolute;
+    inset: 6px;
+    border: 1px solid rgba(212,175,55,0.25);
+    border-radius: 14px 14px 50% 50% / 14px 14px 32% 32%;
+    pointer-events: none;
+  }
+  .table::after {
+    content: '🎩 DEALER';
+    position: absolute;
+    top: -13px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #3a2412;
+    color: var(--gold);
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    padding: 3px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(212,175,55,0.5);
+    z-index: 5;
   }
   .stats {
     display: flex;
@@ -261,7 +289,13 @@
     :root { --card-w: 46px; --card-h: 64px; }
     body { padding: 6px; padding-bottom: 70px; }
     h1 { font-size: 1.15rem; margin: 2px 0 4px; }
-    .table { padding: 8px; border-width: 3px; border-radius: 14px; }
+    .table {
+      padding: 14px 10px;
+      border-width: 4px;
+      border-radius: 28px;
+    }
+    .table::before { inset: 4px; border-radius: 22px; }
+    .table::after { font-size: 9px; padding: 2px 10px; top: -10px; }
     .stats {
       font-size: 11px;
       padding: 5px 8px;
@@ -294,6 +328,7 @@
       max-width: 100%;
       padding: 6px;
       border-radius: 8px;
+      margin-top: 0 !important;
     }
     /* Sua mão sempre em destaque e no topo dos assentos */
     .seat.you-seat {
@@ -448,6 +483,12 @@
       <button type="button" class="botCountBtn" data-bots="1">1</button>
       <button type="button" class="botCountBtn" data-bots="2">2</button>
       <button type="button" class="botCountBtn selected" data-bots="3">3</button>
+    </div>
+
+    <div id="setupPositionWrap">
+      <p style="margin:18px 0 6px;">Em qual posição você quer sentar?</p>
+      <div class="controls" id="setupPositionButtons" style="margin-top:0;"></div>
+      <p style="margin:6px 0 0; font-size:12px; opacity:0.75;">A ordem do jogo vai da posição 1 até a última, e o dealer joga por último.</p>
     </div>
 
     <button id="setupStartBtn" style="margin-top:20px; font-size:16px; padding:14px 28px;">Sentar à mesa 🎲</button>
@@ -781,14 +822,19 @@
     if (navigator.vibrate) navigator.vibrate(pattern);
   }
 
-  function initializeSeats(numBots) {
+  function initializeSeats(numBots, userPos) {
     seats = [];
-    for (let i = 0; i < numBots; i++) {
-      const b = BOT_POOL[i];
-      seats.push({ name: b.name, avatar: b.avatar, isBot: true, chips: 500, hands: [] });
+    const pos = Math.max(0, Math.min(userPos, numBots)); // trava dentro do range válido
+    let botIndex = 0;
+    for (let i = 0; i <= numBots; i++) {
+      if (i === pos) {
+        seats.push({ name: 'Você', avatar: '🧑', isBot: false, chips: null, hands: [] });
+      } else {
+        const b = BOT_POOL[botIndex++];
+        seats.push({ name: b.name, avatar: b.avatar, isBot: true, chips: 500, hands: [] });
+      }
     }
-    seats.push({ name: 'Você', avatar: '🧑', isBot: false, chips: null, hands: [] });
-    USER_SEAT_INDEX = seats.length - 1;
+    USER_SEAT_INDEX = pos;
   }
 
   const el = id => document.getElementById(id);
@@ -1038,9 +1084,23 @@
 
     const seatsRow = el('seatsRow');
     seatsRow.innerHTML = '';
+    const n = seats.length;
+    const mid = (n - 1) / 2;
+    const isDesktopView = window.innerWidth > 700;
     seats.forEach((seat, si) => {
       const seatDiv = document.createElement('div');
       seatDiv.className = 'seat' + (si === USER_SEAT_INDEX ? ' you-seat' : '') + (roundActive && turnPointer.seat === si ? ' active-turn' : '');
+
+      // Curva os assentos como se estivessem ao redor da base arredondada
+      // da mesa (efeito "meia-lua"): assento do meio fica mais "descido",
+      // os das pontas ficam mais próximos do topo reto (onde é o dealer).
+      if (isDesktopView && n > 1) {
+        const t = si - mid;
+        const maxT = mid || 1;
+        const curveDepth = 26;
+        const offset = curveDepth * (1 - Math.pow(t / maxT, 2));
+        seatDiv.style.marginTop = offset.toFixed(1) + 'px';
+      }
 
       const header = document.createElement('div');
       header.className = 'seat-header';
@@ -1118,28 +1178,53 @@
     renderAll(false);
     saveState();
 
-    const dealerBJ = isBlackjack(dealer.cards);
-    if (dealerBJ) {
-      revealHoleCard();
-      renderAll(true);
-      seats.forEach((seat, si) => {
-        const hand = seat.hands[0];
-        const outcome = isBlackjack(hand.cards) ? 'push' : 'lose';
-        applyOutcome(seat, hand, outcome, si === USER_SEAT_INDEX);
-      });
-      setMessage('Dealer tem Blackjack! ' + (isBlackjack(seats[USER_SEAT_INDEX].hands[0].cards) ? 'Você empatou.' : 'Você perdeu.'));
-      vibrate([80, 40, 80]);
-      renderAll(true);
-      endRound();
-      return;
-    }
-
-    // Oferecer Seguro se dealer mostrou Ás
+    // Oferecer Seguro ANTES de saber se o dealer tem Blackjack —
+    // é assim que funciona numa mesa de verdade: você decide sobre o
+    // seguro só vendo a carta aberta (Ás), sem saber a carta escondida.
     if (dealer.cards[0].rank === 'A') {
       insuranceOffered = true;
       el('insuranceArea').style.display = 'flex';
       setMessage('Dealer mostrou Ás. Deseja fazer Seguro?');
       return; // espera decisão do jogador
+    }
+
+    resolveDealerBlackjackCheck();
+  }
+
+  function resolveDealerBlackjackCheck() {
+    el('insuranceArea').style.display = 'none';
+    const dealerBJ = isBlackjack(dealer.cards);
+
+    if (dealerBJ) {
+      revealHoleCard();
+
+      // Resolve o seguro primeiro, se foi feito
+      if (playerTookInsurance) {
+        const payout = insuranceBet * 2;
+        bankroll += insuranceBet + payout; // devolve a aposta de seguro + paga 2:1
+        setMessage('Dealer tem Blackjack! Seguro pagou 2:1 (+' + payout + ')');
+        vibrate([40, 30, 40, 30, 80]);
+      }
+
+      seats.forEach((seat, si) => {
+        const hand = seat.hands[0];
+        const outcome = isBlackjack(hand.cards) ? 'push' : 'lose';
+        applyOutcome(seat, hand, outcome, si === USER_SEAT_INDEX);
+      });
+
+      if (!playerTookInsurance) {
+        setMessage('Dealer tem Blackjack! ' + (isBlackjack(seats[USER_SEAT_INDEX].hands[0].cards) ? 'Você empatou.' : 'Você perdeu.'));
+        vibrate([80, 40, 80]);
+      }
+      renderAll(true);
+      endRound();
+      return;
+    }
+
+    // Dealer não tem Blackjack: se o jogador fez seguro, ele perde
+    // o valor do seguro (já foi debitado do saldo na hora de apostar).
+    if (playerTookInsurance) {
+      setMessage('Seguro não pagou (dealer sem Blackjack). Jogo continua...');
     }
 
     continueAfterInsurance();
@@ -1168,12 +1253,12 @@
     el('bankroll').textContent = bankroll;
     setMessage('Seguro feito! (+' + half + ' de aposta de seguro)');
     vibrate(30);
-    continueAfterInsurance();
+    resolveDealerBlackjackCheck();
   }
 
   function declineInsurance() {
     playerTookInsurance = false;
-    continueAfterInsurance();
+    resolveDealerBlackjackCheck();
   }
 
   function startTurns() {
@@ -1385,16 +1470,6 @@
     setMessage('Dealer revelando e jogando...');
     revealHoleCard();
     renderAll(true);
-
-    // Resolver seguro se dealer tem Blackjack
-    if (playerTookInsurance && isBlackjack(dealer.cards)) {
-      const payout = insuranceBet * 2;
-      bankroll += insuranceBet + payout; // devolve a aposta de seguro + 2:1
-      setMessage('Dealer tem Blackjack! Seguro pagou 2:1 (+' + payout + ')');
-      vibrate([40, 30, 40, 30, 80]);
-    } else if (playerTookInsurance) {
-      // seguro perdido (já foi debitado)
-    }
 
     const allBusted = seats.every(seat => seat.hands.every(h => handScore(h.cards) > 21 || h.isBlackjack));
     const playSteps = () => {
@@ -1660,6 +1735,7 @@
 
   // ---------- Configuração inicial ----------
   let selectedBotCount = 3;
+  let selectedPosition = 3; // padrão: último a jogar (comportamento antigo)
 
   document.querySelectorAll('#setupOverlay .chip').forEach(chip => {
     chip.addEventListener('click', () => {
@@ -1667,11 +1743,41 @@
     });
   });
 
-  document.querySelectorAll('.botCountBtn').forEach(btn => {
+  function renderPositionButtons() {
+    const wrap = el('setupPositionWrap');
+    const container = el('setupPositionButtons');
+    if (selectedBotCount === 0) {
+      wrap.style.display = 'none';
+      selectedPosition = 0;
+      return;
+    }
+    wrap.style.display = 'block';
+    if (selectedPosition > selectedBotCount) selectedPosition = selectedBotCount;
+
+    container.innerHTML = '';
+    for (let i = 0; i <= selectedBotCount; i++) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'botCountBtn' + (i === selectedPosition ? ' selected' : '');
+      btn.dataset.pos = i;
+      if (i === 0) btn.textContent = '1ª (primeiro)';
+      else if (i === selectedBotCount) btn.textContent = `${i+1}ª (último)`;
+      else btn.textContent = `${i+1}ª`;
+      btn.addEventListener('click', () => {
+        selectedPosition = i;
+        container.querySelectorAll('.botCountBtn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+      });
+      container.appendChild(btn);
+    }
+  }
+
+  document.querySelectorAll('.botCountBtn[data-bots]').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.botCountBtn').forEach(b => b.classList.remove('selected'));
+      document.querySelectorAll('.botCountBtn[data-bots]').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
       selectedBotCount = parseInt(btn.dataset.bots);
+      renderPositionButtons();
     });
   });
 
@@ -1679,7 +1785,7 @@
     const bankrollVal = parseInt(el('setupBankrollInput').value);
     // Se já tinha saldo salvo e o usuário não mudou muito, respeita o salvo
     if (bankrollVal && bankrollVal > 0) bankroll = bankrollVal;
-    initializeSeats(selectedBotCount);
+    initializeSeats(selectedBotCount, selectedPosition);
     dealer = { cards: [] };
     roundActive = false;
     turnPointer = { seat: 0, hand: 0 };
@@ -1697,7 +1803,7 @@
     buildShoe();
     renderAll(false);
     updateScoreboard();
-    const botMsg = selectedBotCount === 0 ? 'Só você na mesa hoje.' : `${selectedBotCount} bot(s) sentaram com você.`;
+    const botMsg = selectedBotCount === 0 ? 'Só você na mesa hoje.' : `${selectedBotCount} bot(s) sentaram com você — você joga na posição ${selectedPosition + 1}.`;
     setMessage(`Faça sua aposta para começar! ${botMsg}`);
     saveState();
   }
@@ -1706,13 +1812,19 @@
 
   el('reconfigureBtn').addEventListener('click', () => {
     el('setupBankrollInput').value = bankroll;
-    document.querySelectorAll('.botCountBtn').forEach(b => {
-      b.classList.toggle('selected', parseInt(b.dataset.bots) === (seats.length - 1));
+    const numBots = seats.length - 1;
+    document.querySelectorAll('.botCountBtn[data-bots]').forEach(b => {
+      b.classList.toggle('selected', parseInt(b.dataset.bots) === numBots);
     });
-    selectedBotCount = seats.length - 1;
+    selectedBotCount = numBots;
+    selectedPosition = USER_SEAT_INDEX;
+    renderPositionButtons();
     el('tableWrapper').style.display = 'none';
     el('setupOverlay').style.display = 'flex';
   });
+
+  // Inicializa os botões de posição pro estado padrão (3 bots)
+  renderPositionButtons();
 
   // Carrega estado salvo ao iniciar
   loadState();
