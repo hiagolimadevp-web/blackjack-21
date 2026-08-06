@@ -1,5 +1,7 @@
 (function () {
-  const SUITS = [
+  const state = window.BlackjackState;
+  with (state) {
+    const SUITS = [
     { symbol: "♠", color: "black" },
     { symbol: "♥", color: "red" },
     { symbol: "♦", color: "red" },
@@ -24,22 +26,22 @@
   const BOT_BET = 25;
   const CUT_CARD = 78;
 
-  let shoe = [];
-  let bankroll = 1000;
-  let currentBet = 0;
-  let dealer = { cards: [] };
-  let roundActive = false;
-  let turnPointer = { seat: 0, hand: 0 };
-  let runningCount = 0;
-  let dealerHoleCounted = false;
-  let countGuessHistory = [];
-  let flashDeck = [];
-  let flashRunningCount = 0;
-  let flashShownCount = 0;
-  let flashTotalCount = 0;
-  let insuranceOffered = false;
-  let playerTookInsurance = false;
-  let insuranceBet = 0;
+  shoe = [];
+  bankroll = 1000;
+  currentBet = 0;
+  dealer = { cards: [] };
+  roundActive = false;
+  turnPointer = { seat: 0, hand: 0 };
+  runningCount = 0;
+  dealerHoleCounted = false;
+  countGuessHistory = [];
+  flashDeck = [];
+  flashRunningCount = 0;
+  flashShownCount = 0;
+  flashTotalCount = 0;
+  insuranceOffered = false;
+  playerTookInsurance = false;
+  insuranceBet = 0;
 
   const BOT_POOL = [
     { name: "Ana", avatar: "👩" },
@@ -47,8 +49,8 @@
     { name: "Carla", avatar: "👩‍🦰" },
   ];
 
-  let USER_SEAT_INDEX = 0;
-  let seats = [];
+  USER_SEAT_INDEX = 0;
+  seats = [];
 
   // ---------- Persistência ----------
   function loadState() {
@@ -156,9 +158,9 @@
     return -1;
   }
 
-  let roundHistory = [];
-  let roundCardLog = [];
-  let roundNumber = 0;
+  roundHistory = [];
+  roundCardLog = [];
+  roundNumber = 0;
   const MAX_HISTORY = 15;
 
   function countCard(card) {
@@ -1340,8 +1342,8 @@
   });
 
   // ---------- Configuração inicial ----------
-  let selectedBotCount = 3;
-  let selectedPosition = 3; // padrão: último a jogar (comportamento antigo)
+  selectedBotCount = 3;
+  selectedPosition = 3; // padrão: último a jogar (comportamento antigo)
 
   document.querySelectorAll("#setupOverlay .chip").forEach((chip) => {
     chip.addEventListener("click", () => {
@@ -1449,4 +1451,5 @@
   loadState();
   el("setupBankrollInput").value = bankroll;
   updateScoreboard();
+  }
 })();

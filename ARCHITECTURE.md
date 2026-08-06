@@ -32,66 +32,88 @@ Esta abordagem é suficiente para o porte atual do projeto e escala bem para fut
 A aplicação deve ser organizada em módulos com responsabilidades bem delimitadas.
 
 ### 2.1 Módulo de constantes e configuração
+
 Responsável por:
+
 - definir constantes do jogo, como número de baralhos, valores de aposta, limites de corte e pool de bots;
 - manter rótulos e textos fixos usados por várias partes do sistema;
 - centralizar valores configuráveis para facilitar ajustes futuros.
 
 ### 2.2 Módulo de estado
+
 Responsável por:
+
 - guardar o estado da sessão atual: saldo, rodadas, dealer, mãos, turnos, contagem, seguro e histórico;
 - servir como ponto único de verdade para o restante do sistema;
 - expor operações simples de leitura e atualização do estado.
 
 ### 2.3 Módulo de persistência
+
 Responsável por:
+
 - salvar e restaurar o estado do jogo no localStorage;
 - manter compatibilidade com a experiência do usuário entre recarregamentos;
 - encapsular a lógica de serialização e recuperação.
 
 ### 2.4 Módulo de baralho e rodada
+
 Responsável por:
+
 - criar e embaralhar o shoe;
 - distribuir cartas;
 - controlar o ciclo de compra de cartas e manipulação do baralho.
 
 ### 2.5 Módulo de contagem
+
 Responsável por:
+
 - aplicar a contagem Hi-Lo;
 - calcular o running count e true count;
 - atualizar a UI de contagem e as sugestões de aposta.
 
 ### 2.6 Módulo de regras do jogo
+
 Responsável por:
+
 - definir pontuação de mãos;
 - identificar blackjack, mãos macias e mãos duras;
 - fornecer estratégia básica e desvios com base na contagem.
 
 ### 2.7 Módulo de interface e renderização
+
 Responsável por:
+
 - criar e atualizar elementos do DOM;
 - renderizar dealer, assentos, cartas, mensagens, contadores e histórico;
 - abstrair o acesso direto ao DOM para os demais módulos.
 
 ### 2.8 Módulo de fluxo de jogo
+
 Responsável por:
+
 - controlar o ciclo completo de uma rodada;
 - coordenar início da rodada, ações do usuário, turnos dos bots, dealer, seguro e resolução;
 - orquestrar a comunicação entre estado, regras e interface.
 
 ### 2.9 Módulo de setup e configuração da mesa
+
 Responsável por:
+
 - configurar saldo inicial;
 - selecionar número de bots e posição do jogador;
 - montar a mesa inicial e iniciar a partida.
 
 ### 2.10 Módulo de recursos de estudo
+
 Responsável por:
+
 - tratar flashcards, guia integrado, checagem de contagem e histórico de rodadas;
 - manter esse conjunto de recursos isolado do fluxo principal do jogo.
 
 ### 2.11 Módulo de inicialização
+
 Responsável por:
+
 - montar a aplicação;
 - registrar listeners de eventos;
 - conectar cada módulo à sua integração inicial.
@@ -267,28 +289,34 @@ A estrutura abaixo é simples, profissional e adequada ao projeto atual.
 A evolução deve ser gradual e segura.
 
 ### Versão atual
+
 - aplicação estática com HTML, CSS e JavaScript separados;
 - lógica concentrada em um único arquivo de comportamento;
 - comportamento preservado e estável.
 
 ### Fase 1 — organização estrutural
+
 - criar módulos básicos para constantes, estado, persistência e regras;
 - manter o jogo funcionando exatamente como hoje;
 - não alterar regras nem UX.
 
 ### Fase 2 — separação do fluxo de jogo
+
 - mover o ciclo de rodada para um módulo dedicado;
 - deixar a interface mais fina e mais orientada a eventos.
 
 ### Fase 3 — isolamento de UI
+
 - centralizar renderização e manipulação do DOM em módulos próprios;
 - reduzir o espalhamento de código no fluxo de jogo.
 
 ### Fase 4 — recursos avançados
+
 - adicionar coach, estatísticas, modo de estudo e revisão de mãos;
 - garantir que as novas camadas utilizem os mesmos princípios de modularização.
 
 ### Fase 5 — testabilidade e manutenção
+
 - introduzir testes de regras e fluxo de jogo;
 - separar lógica pura da lógica dependente de DOM;
 - tornar o sistema mais previsível e menos frágil.
@@ -302,38 +330,48 @@ Não introduzir novas camadas antes de consolidar as atuais. Cada etapa deve ser
 ## 8. Riscos da refatoração e como evitá-los
 
 ### Risco 1 — alterar comportamento sem perceber
+
 Como o app possui regras de blackjack, contagem e saldo, pequenas mudanças podem quebrar o jogo.
 
 Mitigação:
+
 - refatorar em etapas pequenas;
 - manter testes manuais por rodada após cada etapa;
 - evitar mudanças simultâneas de regra e estrutura.
 
 ### Risco 2 — acoplamento excessivo entre módulos
+
 Se o fluxo de jogo manipular DOM diretamente, a manutenção fica difícil.
 
 Mitigação:
+
 - deixar interface em módulos dedicados;
 - passar dados por funções ou estado, não por efeitos indiretos.
 
 ### Risco 3 — estado espalhado
+
 Se várias partes do código alterarem o estado de forma independente, o sistema fica inconsistente.
 
 Mitigação:
+
 - centralizar estado em um único módulo;
 - usar funções de atualização bem definidas.
 
 ### Risco 4 — dependências circulares
+
 Se módulos dependerem uns dos outros em loop, a manutenção fica complexa.
 
 Mitigação:
+
 - manter dependência unidirecional;
 - usar o fluxo de jogo como ponto de orquestração principal.
 
 ### Risco 5 — refatoração excessiva demais
+
 Uma refatoração muito grande aumenta o risco de regressão e dificulta revisão.
 
 Mitigação:
+
 - dividir em pequenas entregas;
 - validar cada etapa antes de seguir.
 
@@ -344,6 +382,7 @@ Mitigação:
 Cada etapa de refatoração deve ser acompanhada por validação explícita.
 
 ### Checklist básico
+
 - [ ] a aplicação carrega sem erros no navegador;
 - [ ] o jogo inicia normalmente;
 - [ ] o saldo e as apostas funcionam como antes;
@@ -355,6 +394,7 @@ Cada etapa de refatoração deve ser acompanhada por validação explícita.
 - [ ] a persistência continua funcionando após recarregar a página.
 
 ### Checklist estrutural
+
 - [ ] cada função está em um módulo com responsabilidade clara;
 - [ ] não há lógica de regra em módulos de interface;
 - [ ] não há manipulação de DOM em módulos de domínio;
@@ -364,6 +404,7 @@ Cada etapa de refatoração deve ser acompanhada por validação explícita.
 - [ ] a documentação foi atualizada quando necessário.
 
 ### Checklist de qualidade
+
 - [ ] o código continua legível;
 - [ ] os nomes refletem claramente a responsabilidade;
 - [ ] o módulo não ficou excessivamente grande;
