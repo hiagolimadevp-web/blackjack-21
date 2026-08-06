@@ -4,6 +4,13 @@
 
 Este projeto é uma aplicação web estática de treinamento de Blackjack, com interface em HTML, estilo em CSS e lógica em JavaScript. Atualmente, a aplicação já foi organizada em arquivos separados para apresentação e comportamento, mas ainda preserva uma estrutura monolítica em termos de responsabilidade lógica.
 
+A visão de longo prazo do produto não é apenas simular uma mesa de blackjack, mas se transformar em uma plataforma de treinamento para tomada de decisão. Para isso, a arquitetura precisa suportar quatro pilares principais:
+
+1. Simulação: dealer, bots, shoe, contagem, apostas e regras.
+2. Treinamento: coach mode, explicação contextual, revisão da última mão, flashcards, drills e metas de prática.
+3. Analytics: análise de desempenho, qualidade das decisões, EV, luck index, métricas por categoria e evolução ao longo do tempo.
+4. Personalização: coach adaptativo, repetição espaçada, plano de treino e dashboard de evolução.
+
 O objetivo desta arquitetura é permitir evolução incremental sem quebrar o comportamento atual do jogo. A proposta é manter a aplicação simples, com baixo acoplamento, alta legibilidade e clareza de responsabilidades, sem introduzir framework desnecessário.
 
 ### Princípios arquiteturais
@@ -18,18 +25,22 @@ O objetivo desta arquitetura é permitir evolução incremental sem quebrar o co
 
 A arquitetura proposta é uma estrutura modular em camadas, com:
 
-- camada de domínio: regras do jogo, estratégia, baralho, contagem e estado;
+- camada de domínio: regras do jogo, estratégia, baralho, contagem, estado e eventos de rodada;
+- camada de simulação: dealer, bots, shoe, apostas e regras aplicadas em contexto de mesa;
+- camada de treinamento: coach, explicações, revisão de mãos, drills, flashcards e metas de prática;
+- camada de analytics: análise de desempenho, qualidade da decisão, EV, luck index, métricas por categoria e evolução histórica;
+- camada de personalização: recomendações adaptativas, repetição espaçada, planos de treino e dashboard de evolução;
 - camada de apresentação: renderização da interface, eventos e manipulação do DOM;
-- camada de aplicação: orquestração do fluxo de rodada e setup;
-- camada de infraestrutura: persistência local e integração com o browser.
+- camada de aplicação: orquestração do fluxo de rodada, setup e integração entre os pilares;
+- camada de infraestrutura: persistência local, armazenamento de histórico e integração com o browser.
 
-Esta abordagem é suficiente para o porte atual do projeto e escala bem para futuras funcionalidades como coach, estatísticas, histórico avançado e modo de estudo.
+Esta abordagem é suficiente para o porte atual do projeto e escala bem para futuras funcionalidades de treinamento e análise de decisão.
 
 ---
 
 ## 2. Responsabilidade de cada módulo
 
-A aplicação deve ser organizada em módulos com responsabilidades bem delimitadas.
+A aplicação deve ser organizada em módulos com responsabilidades bem delimitadas. A partir desta visão de produto, os módulos passam a ser agrupados por pilares, mas mantendo uma arquitetura comum de integração.
 
 ### 2.1 Módulo de constantes e configuração
 
@@ -111,7 +122,6 @@ Responsável por:
 - manter esse conjunto de recursos isolado do fluxo principal do jogo.
 
 ### 2.11 Módulo de inicialização
-
 Responsável por:
 
 - montar a aplicação;
@@ -127,17 +137,19 @@ O fluxo de dados deve ser simples e previsível.
 ### Fluxo principal
 
 1. O módulo de setup prepara a mesa e define o estado inicial.
-2. O módulo de baralho fornece cartas para a rodada.
+2. O módulo de simulação controla dealer, bots, baralho e fluxo da rodada.
 3. O módulo de contagem atualiza a contagem conforme as cartas são distribuídas.
 4. O módulo de regras avalia as mãos e produz decisões estratégicas.
-5. O módulo de fluxo de jogo coordena as ações do usuário e dos bots.
-6. O módulo de interface renderiza o estado atualizado no DOM.
-7. O módulo de persistência salva periodicamente o estado.
+5. O módulo de treinamento interpreta a decisão e oferece feedback pedagógico.
+6. O módulo de analytics registra a ação, o contexto e o resultado para análise posterior.
+7. O módulo de personalização usa esses sinais para adaptar o próximo treino.
+8. O módulo de interface renderiza o estado atualizado no DOM.
+9. O módulo de persistência salva periodicamente o estado e os dados de aprendizagem.
 
 ### Exemplo de fluxo de uma rodada
 
 ```text
-Setup → Estado inicial → Baralho → Distribuição → Contagem → Regras → Fluxo de jogo → Renderização → Persistência
+Setup → Simulação → Contagem → Regras → Treinamento → Analytics → Personalização → Renderização → Persistência
 ```
 
 ### Fluxo de eventos
@@ -164,7 +176,11 @@ Setup → Estado inicial → Baralho → Distribuição → Contagem → Regras 
 - O módulo de regras pode ser usado por fluxo de jogo, interface e recursos de estudo.
 - O módulo de interface pode consumir estado e regras para renderizar.
 - O módulo de fluxo de jogo pode depender de estado, regras, baralho, contagem e interface.
-- O módulo de persistência pode depender do estado.
+- O módulo de simulação pode depender de estado, regras, baralho e contagem.
+- O módulo de treinamento pode depender de simulação, regras, estado e analytics.
+- O módulo de analytics pode depender de simulação, estado e eventos de decisão.
+- O módulo de personalização pode depender de analytics, estado e treinamento.
+- O módulo de persistência pode depender do estado e dos dados de aprendizagem.
 
 ### Dependências proibidas
 
@@ -242,7 +258,7 @@ Cada módulo deve seguir um padrão consistente:
 
 ## 6. Estrutura de pastas recomendada
 
-A estrutura abaixo é simples, profissional e adequada ao projeto atual.
+A estrutura abaixo é simples, profissional e adequada ao projeto atual e à evolução futura.
 
 ```text
 /blackjack-21
@@ -255,18 +271,38 @@ A estrutura abaixo é simples, profissional e adequada ao projeto atual.
         constants.js
         state.js
         persistence.js
-      /domain
+        eventBus.js
+      /simulation
         deck.js
-        counting.js
+        dealer.js
+        bots.js
+        roundEngine.js
+        betting.js
         rules.js
-        game.js
-        setup.js
+        counting.js
+      /training
+        coach.js
+        explanations.js
+        review.js
+        drills.js
+        flashcards.js
+        practiceGoals.js
+      /analytics
+        performanceAnalyzer.js
+        metrics.js
+        sessionStats.js
+        categoryStats.js
+        trendAnalyzer.js
+      /personalization
+        adaptiveCoach.js
+        spacedRepetition.js
+        trainingPlan.js
+        progressDashboard.js
       /ui
         dom.js
         renderer.js
         events.js
       /features
-        flashcards.js
         guide.js
         history.js
       /bootstrap
@@ -274,6 +310,7 @@ A estrutura abaixo é simples, profissional e adequada ao projeto atual.
   /index.html
   /README.md
   /ARCHITECTURE.md
+  /ROADMAP.md
 ```
 
 ### Observações sobre a estrutura
