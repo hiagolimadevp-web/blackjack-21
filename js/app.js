@@ -1,5 +1,7 @@
 (function () {
   const state = window.BlackjackState;
+  const domain = window.BlackjackDomain;
+  const counting = window.BlackjackCounting;
   with (state) {
     const SUITS = [
     { symbol: "♠", color: "black" },
@@ -146,16 +148,11 @@
   }
 
   function cardValue(card) {
-    if (card.rank === "A") return 11;
-    if (["J", "Q", "K"].includes(card.rank)) return 10;
-    return parseInt(card.rank);
+    return domain.cardValue(card);
   }
 
   function hiLoValue(card) {
-    const v = cardValue(card);
-    if (v >= 2 && v <= 6) return 1;
-    if (v >= 7 && v <= 9) return 0;
-    return -1;
+    return counting.hiLoValue(card);
   }
 
   roundHistory = [];
@@ -241,35 +238,15 @@
   }
 
   function handScore(cards) {
-    let total = 0,
-      aces = 0;
-    for (const c of cards) {
-      total += cardValue(c);
-      if (c.rank === "A") aces++;
-    }
-    while (total > 21 && aces > 0) {
-      total -= 10;
-      aces--;
-    }
-    return total;
+    return domain.handScore(cards);
   }
 
   function isSoft(cards) {
-    let total = 0,
-      aces = 0;
-    for (const c of cards) {
-      total += cardValue(c);
-      if (c.rank === "A") aces++;
-    }
-    while (total > 21 && aces > 0) {
-      total -= 10;
-      aces--;
-    }
-    return aces > 0;
+    return domain.isSoft(cards);
   }
 
   function isBlackjack(cards) {
-    return cards.length === 2 && handScore(cards) === 21;
+    return domain.isBlackjack(cards);
   }
 
   // ---------- Estratégia básica (mesma para dicas e bots) ----------

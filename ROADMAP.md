@@ -37,7 +37,8 @@ Prioridades:
 - métricas de desempenho por sessão;
 - análise de acerto/erro por cenário;
 - indicadores de tendência e consistência;
-- comparação entre decisões e resultados esperados.
+- comparação entre decisões e resultados esperados;
+- infraestrutura de eventos e decisões como base para performance analyzer, luck index e dashboard.
 
 ### 4. Personalização
 
@@ -182,3 +183,19 @@ Resultado esperado:
 2. Consolidar cada camada antes de avançar;
 3. Validar comportamento do jogo após cada mudança;
 4. Manter a experiência simples, educativa e sem ruído.
+
+## Regras de sprint
+
+- Cada módulo extraído precisa ter testes automatizados realmente executáveis.
+- Os testes devem verificar comportamento esperado de funções puras.
+- Cada módulo precisa ter um contrato de responsabilidades explícito, com:
+  - o que faz;
+  - o que não faz;
+  - dependências permitidas;
+  - dependências proibidas.
+- A validação não pode se limitar à ausência de erros no editor; ela deve incluir execução real dos testes e verificação do comportamento.
+- Antes de iniciar cada sprint, a justificativa técnica deve explicitar:
+  - por que esse módulo foi escolhido;
+  - qual risco ele reduz;
+  - qual benefício ele traz para a arquitetura;
+  - como ele contribui para um dos quatro pilares do produto.

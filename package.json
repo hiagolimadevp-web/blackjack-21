@@ -1,0 +1,10 @@
+{
+  "name": "blackjack-21",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Blackjack 21 com módulos de domínio, contagem e analytics",
+  "scripts": {
+    "test": "node --test tests/gameLogic.test.js tests/counting.test.js tests/statistics.test.js",
+    "test:watch": "node --test --watch tests/gameLogic.test.js tests/counting.test.js tests/statistics.test.js"
+  }
+}
